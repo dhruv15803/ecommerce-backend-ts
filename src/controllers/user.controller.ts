@@ -1,0 +1,277 @@
+import jwt, { JwtPayload } from "jsonwebtoken";
+import { client } from "../index";
+import { v2 as cloudinary } from "cloudinary";
+import dotenv from "dotenv";
+import bcrypt from "bcrypt";
+import fs from "fs";
+dotenv.config({
+  path: "C:\\Users\\DHRUV\\Desktop\\typescript-projects\\ecommerce-app\\backendsrc\\.env",
+});
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+interface User {
+  email: string;
+  username: string;
+  password: string;
+  confirmPassword: string;
+  firstname: string;
+  lastname: string;
+  avatar?: string;
+  isadmin?:boolean;
+  address_field_1?: string;
+  address_field_2?: string;
+  address_field_3?: string;
+}
+
+const registerUser = async (req: any, res: any) => {
+  try {
+    const {
+      email,
+      username,
+      password,
+      confirmPassword,
+      firstname,
+      lastname,
+    }: User = req.body;
+    let avatarUrl: string = "";
+    let localFilePath: string;
+    let isadmin:boolean = false;
+    // any register fields cannot be empty
+    const registerFields: string[] = [
+      email,
+      username,
+      password,
+      confirmPassword,
+      firstname,
+      lastname,
+    ];
+
+    if (req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is logged in",
+      });
+      return;
+    }
+
+
+    registerFields.forEach((val) => {
+      if (val.trim() === "") {
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        res.status(400).json({
+          success: false,
+          message: "Please enter all fields",
+        });
+        return;
+      }
+    });
+
+    if (password !== confirmPassword) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(400).json({
+        success: false,
+        message: "password and confirm password do not match",
+      });
+      return;
+    }
+
+    // check if username or email already exists
+    const isUser = await client.query(
+      `SELECT * FROM users WHERE username=$1 OR email=$2`,
+      [username.trim().toLowerCase(), email.trim().toLowerCase()]
+    );
+
+    if (isUser.rows.length !== 0) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(400).json({
+        success: false,
+        message: "username or email already exists",
+      });
+      return;
+    }
+
+    // if user is registering then ofcourse it cannot be logged in
+
+    if (req.file) {
+      localFilePath = req.file.path;
+      const { url } = await cloudinary.uploader.upload(localFilePath, {
+        resource_type: "auto",
+      });
+      avatarUrl = url;
+      fs.unlinkSync(localFilePath);
+    }
+    // checking if password and confirm password are equal
+
+    // hashing password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password,salt);
+
+    // isadmin
+    if(username.trim().toLowerCase()===process.env.ADMIN_USERNAME && email.trim().toLowerCase()===process.env.ADMIN_EMAIL && password.trim()===process.env.ADMIN_PASSWORD){
+      isadmin=true;
+    }
+
+    const newUser = await client.query(`INSERT INTO users(username,email,firstname,lastname,avatarurl,isadmin,password) VALUES('${username.trim().toLowerCase()}','${email.trim().toLowerCase()}','${firstname.trim()}','${lastname.trim()}','${avatarUrl}',${isadmin},'${hashedPassword}')`)
+    res.status(200).json({
+      success: true,
+      message: "user registered successfully",
+      user: newUser.rows[0],
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const loginUser = async (req: any, res: any) => {
+  try {
+    const { email, password } = req.body;
+    // check if a user is already logged in
+    if (req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is logged in",
+      });
+      return;
+    }
+    // check if user is registered into the system
+    const isUser = await client.query(`SELECT * FROM users WHERE email=$1`, [
+      email.trim().toLowerCase(),
+    ]);
+    if (isUser.rows.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: "email or password is incorrect",
+      });
+      return;
+    }
+    // checking if password is correct
+    const isCorrect = await bcrypt.compare(password, isUser.rows[0].password);
+    if (!isCorrect) {
+      res.status(400).json({
+        success: false,
+        message: "email or password is incorrect",
+      });
+    }
+
+    // email and password are correct
+    // generating token using jwt
+
+    const token = jwt.sign(
+      { userid: isUser.rows[0].userid },
+      String(process.env.JWT_SECRET),
+      {
+        expiresIn: "1d",
+      }
+    );    
+
+    res.status(200).cookie("accessToken", token, {
+      httpOnly: true,
+      expires: new Date(Date.now() + 60 * 1000 * 60 * 24),
+    }).json({
+      success: true,
+      message: "user logged in successfully",
+      user: isUser.rows[0],
+    });
+
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const logoutUser = async (req: any, res: any) => {
+  try {
+    // the user needs to be logged in to logout
+    // 1: check if the user is logged in
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+
+    res.clearCookie("accessToken");
+    res.status(200).json({
+      success: true,
+      message: "user successfully logged out",
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const uploadAvatar = async (req: any, res: any) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({
+        success: false,
+        message: "file not available",
+      });
+      return;
+    }
+    const localFilePath = req.file.path;
+    const { url } = await cloudinary.uploader.upload(localFilePath, {
+      resource_type: "auto",
+    });
+    res.status(200).json({
+      success: true,
+      url,
+    });
+    fs.unlinkSync(localFilePath);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const getLoggedInUser = async (req: any, res: any) => {
+  // check if user is logged in
+  try {
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+
+    const payload: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+
+    const { userid } = Object(payload);
+
+    const user = await client.query(`SELECT * FROM users WHERE userid=$1`, [
+      Number(userid),
+    ]);
+
+    if (user.rows.length === 0) {
+      res.status(500).json({
+        success: false,
+        message: "something went wrong with DB",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      user: user.rows[0],
+    });
+
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export { registerUser, loginUser, logoutUser, getLoggedInUser, uploadAvatar };
