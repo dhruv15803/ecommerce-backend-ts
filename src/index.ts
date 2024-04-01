@@ -8,7 +8,7 @@ import multer from 'multer';
 import { getLoggedInUser, loginUser, logoutUser, registerUser, uploadAvatar } from './controllers/user.controller';
 import cookieParser from 'cookie-parser';
 import cors from 'cors'
-import { addProduct, addProductCategory, deleteProductCategory, editProductCategory, getAllProductCategories, uploadProductThumbnail } from './controllers/product.controller';
+import { addProduct, addProductCategory, addSubCategory, deleteProductCategory, deleteSubCategory, editProductCategory, editSubCategory, getAllProductCategories, getSubCategories, uploadProductThumbnail } from './controllers/product.controller';
 
 type dbObj = {
     database:string | undefined;
@@ -29,6 +29,8 @@ const storage = multer.diskStorage({
         cb(null,file.originalname);
     }
 })
+
+
 const upload = multer({storage:storage});
 
 
@@ -43,16 +45,17 @@ const pgObj:dbObj = {
 // DB CONNECTION
 export const client = new Client(pgObj);
 
-const connectToDb = async () => {
+// IIFE - Immediately invoked function expressions
+(async () => {
     try {
         await client.connect();
         console.log('DB CONNECTED');
     } catch (error) {
         console.log(error);
     }
-}
-connectToDb();
+})();
 
+ 
 // middleware
 app.use(express.json());
 app.use(cookieParser());
@@ -76,6 +79,10 @@ app.post('/product/addCategory',addProductCategory);
 app.get('/product/getAllProductCategories',getAllProductCategories);
 app.delete('/product/deleteProductCategory/:id',deleteProductCategory);
 app.put('/product/editProductCategory',editProductCategory);
+app.post('/product/getSubCategories',getSubCategories);
+app.post('/product/addSubCategory',addSubCategory);
+app.put('/product/editSubCategory',editSubCategory);
+app.delete('/product/deleteSubCategory/:id',deleteSubCategory);
 
 app.listen(port,()=>{
     console.log(`server running at http://localhost:${port}`);

@@ -35,7 +35,8 @@ const pgObj = {
 };
 // DB CONNECTION
 exports.client = new pg_1.Client(pgObj);
-const connectToDb = async () => {
+// IIFE - Immediately invoked function expressions
+(async () => {
     try {
         await exports.client.connect();
         console.log('DB CONNECTED');
@@ -43,8 +44,7 @@ const connectToDb = async () => {
     catch (error) {
         console.log(error);
     }
-};
-connectToDb();
+})();
 // middleware
 app.use(express_1.default.json());
 app.use((0, cookie_parser_1.default)());
@@ -65,6 +65,10 @@ app.post('/product/addCategory', product_controller_1.addProductCategory);
 app.get('/product/getAllProductCategories', product_controller_1.getAllProductCategories);
 app.delete('/product/deleteProductCategory/:id', product_controller_1.deleteProductCategory);
 app.put('/product/editProductCategory', product_controller_1.editProductCategory);
+app.post('/product/getSubCategories', product_controller_1.getSubCategories);
+app.post('/product/addSubCategory', product_controller_1.addSubCategory);
+app.put('/product/editSubCategory', product_controller_1.editSubCategory);
+app.delete('/product/deleteSubCategory/:id', product_controller_1.deleteSubCategory);
 app.listen(port, () => {
     console.log(`server running at http://localhost:${port}`);
 });

@@ -314,81 +314,344 @@ const deleteProductCategory = async (req: any, res: any) => {
 };
 
 const editProductCategory = async (req: any, res: any) => {
-try {
-      const { newProductCategory, id }: { newProductCategory: string; id: number } =
-        req.body;
-        console.log(req.body);
-      if (!req.cookies?.accessToken) {
-        res.status(400).json({
-          success: false,
-          message: "user is not logged in",
-        });
-        return;
-      }
-    
-      const payloadData: Object = jwt.verify(
-        req.cookies.accessToken,
-        String(process.env.JWT_SECRET)
-      );
-      console.log(payloadData);
-      const { userid } = Object(payloadData);
-    
-      const loggedInUserRow = await client.query(
-        `SELECT * FROM users WHERE userid=$1`,
-        [Number(userid)]
-      );
-      const loggedInUser = loggedInUserRow.rows[0];
-      if (
-        loggedInUser.email !== process.env.ADMIN_EMAIL ||
-        loggedInUser.username !== process.env.ADMIN_USERNAME
-      ) {
-        res.status(400).json({
-          success: false,
-          message: "This action can only be performed by an admin",
-        });
-        return;
-      }
-      if (newProductCategory.trim() === "") {
-        res.status(400).json({
-          success: false,
-          message: "please enter a category",
-        });
-        return;
-      }
-    
-      //   checking if new category already exists
-      const checkCategoryExists = await client.query(
-        `SELECT * FROM productCategories WHERE categoryname=$1`,
-        [newProductCategory.trim().toLowerCase()]
-      );
-      console.log(checkCategoryExists.rows);
+  try {
+    const {
+      newProductCategory,
+      id,
+    }: { newProductCategory: string; id: number } = req.body;
+    console.log(req.body);
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
 
-      if (checkCategoryExists.rows.length!== 0) {
-        res.status(400).json({
-          success: false,
-          message: "category already exists",
-        });
-        return;
-      }
-    
-      // update query
-       await client.query(
-        `UPDATE productCategories SET categoryname='${newProductCategory
-          .trim()
-          .toLowerCase()}' WHERE productcategoryid=${id}`
-      );
+    const payloadData: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+    console.log(payloadData);
+    const { userid } = Object(payloadData);
+
+    const loggedInUserRow = await client.query(
+      `SELECT * FROM users WHERE userid=$1`,
+      [Number(userid)]
+    );
+    const loggedInUser = loggedInUserRow.rows[0];
+    if (
+      loggedInUser.email !== process.env.ADMIN_EMAIL ||
+      loggedInUser.username !== process.env.ADMIN_USERNAME
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "This action can only be performed by an admin",
+      });
+      return;
+    }
+    if (newProductCategory.trim() === "") {
+      res.status(400).json({
+        success: false,
+        message: "please enter a category",
+      });
+      return;
+    }
+
+    //   checking if new category already exists
+    const checkCategoryExists = await client.query(
+      `SELECT * FROM productCategories WHERE categoryname=$1`,
+      [newProductCategory.trim().toLowerCase()]
+    );
+    console.log(checkCategoryExists.rows);
+
+    if (checkCategoryExists.rows.length !== 0) {
+      res.status(400).json({
+        success: false,
+        message: "category already exists",
+      });
+      return;
+    }
+
+    // update query
+    await client.query(
+      `UPDATE productCategories SET categoryname='${newProductCategory
+        .trim()
+        .toLowerCase()}' WHERE productcategoryid=${id}`
+    );
     //   updated category
-        const newCategory = await client.query(`SELECT * FROM productCategories WHERE productcategoryid=$1`,[id]);
-    
-      res.status(200).json({
-        "success":true,
-        "message":"successfully edited product category",
-        "newCategory":newCategory.rows[0],
-      })
-} catch (error) {
-    console.log(error);
-}
+    const newCategory = await client.query(
+      `SELECT * FROM productCategories WHERE productcategoryid=$1`,
+      [id]
+    );
 
+    res.status(200).json({
+      success: true,
+      message: "successfully edited product category",
+      newCategory: newCategory.rows[0],
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const addSubCategory = async (req: any, res: any) => {
+  try {
+    const {
+      subcategoryname,
+      productcategoryid,
+    }: { subcategoryname: string; productcategoryid: number } = req.body;
+    console.log(req.body);
+    if (
+      subcategoryname.trim() === "" ||
+      typeof productcategoryid === "string" ||
+      typeof subcategoryname === "number"
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "please enter the required fields",
+      });
+      return;
+    }
+    // need to be an admin
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+
+    const payloadData: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+    console.log(payloadData);
+    const { userid } = Object(payloadData);
+
+    const loggedInUserRow = await client.query(
+      `SELECT * FROM users WHERE userid=$1`,
+      [Number(userid)]
+    );
+    const loggedInUser = loggedInUserRow.rows[0];
+    if (
+      loggedInUser.email !== process.env.ADMIN_EMAIL ||
+      loggedInUser.username !== process.env.ADMIN_USERNAME
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "This action can only be performed by an admin",
+      });
+      return;
+    }
+
+    // cannot have duplicate sub categories in same parent category;
+    const dupCategoryCheck = await client.query(
+      `SELECT * FROM subCategories WHERE productcategoryid=$1 AND subcategoryname=$2`,
+      [productcategoryid, subcategoryname.trim().toLowerCase()]
+    );
+
+    if (dupCategoryCheck.rows.length !== 0) {
+      res.status(400).json({
+        success: false,
+        message: "subcategory already exists",
+      });
+      return;
+    }
+
+    // insert subcategory query
+    const newSubCategory = await client.query(
+      `INSERT INTO subCategories(subcategoryname,productcategoryid) VALUES($1,$2) RETURNING *`,
+      [subcategoryname.trim().toLowerCase(), productcategoryid]
+    );
+
+    res.status(200).json({
+      success: true,
+      newSubCategory: newSubCategory.rows[0],
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const editSubCategory = async (req: any, res: any) => {
+  try {
+    const {
+      newsubcategoryname,
+      subcategoryid,
+      productcategoryid,
+    }: {
+      newsubcategoryname: string;
+      subcategoryid: number;
+      productcategoryid: number;
+    } = req.body;
+    if (
+      newsubcategoryname.trim() === "" ||
+      typeof subcategoryid === "number" ||
+      typeof productcategoryid === "number"
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "please enter a subcategory",
+      });
+      return;
+    }
+
+    // needs to be an admin
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+
+    const payloadData: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+    console.log(payloadData);
+    const { userid } = Object(payloadData);
+
+    const loggedInUserRow = await client.query(
+      `SELECT * FROM users WHERE userid=$1`,
+      [Number(userid)]
+    );
+    const loggedInUser = loggedInUserRow.rows[0];
+    if (
+      loggedInUser.email !== process.env.ADMIN_EMAIL ||
+      loggedInUser.username !== process.env.ADMIN_USERNAME
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "This action can only be performed by an admin",
+      });
+      return;
+    }
+
+    // make sure another subcategory with same name doesn't exist in same parent category
+    const checkSubCategory = await client.query(
+      `SELECT * FROM subCategories WHERE productcategoryid=$1 AND subcategoryname=$2`,
+      [productcategoryid, newsubcategoryname.trim().toLowerCase()]
+    );
+    if (checkSubCategory.rows.length !== 0) {
+      res.status(400).json({
+        success: false,
+        message: "another subcategory exists",
+      });
+      return;
+    }
+
+    // update query
+    await client.query(
+      `UPDATE subcategories SET subcategoryname=$1 WHERE productcategoryid=$2 AND subcategoryid=$3`,
+      [
+        newsubcategoryname.trim().toLowerCase(),
+        productcategoryid,
+        subcategoryid,
+      ]
+    );
+
+    // getting updated subcategory obj
+    const newSubCategoryRow = await client.query(
+      `SELECT * FROM subCategories WHERE productcategoryid=$1 AND subcategoryid=$2`,
+      [productcategoryid, subcategoryid]
+    );
+    res.status(200).json({
+      success: true,
+      newSubCategory: newSubCategoryRow.rows[0],
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const deleteSubCategory = async (req: any, res: any) => {
+  try {
+    const { id }: { id: number } = req.params;
+    // id => subcategoryid
+    // need to be an admin to delete
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+
+    const payloadData: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+    console.log(payloadData);
+    const { userid } = Object(payloadData);
+
+    const loggedInUserRow = await client.query(
+      `SELECT * FROM users WHERE userid=$1`,
+      [Number(userid)]
+    );
+    const loggedInUser = loggedInUserRow.rows[0];
+    if (
+      loggedInUser.email !== process.env.ADMIN_EMAIL ||
+      loggedInUser.username !== process.env.ADMIN_USERNAME
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "This action can only be performed by an admin",
+      });
+      return;
+    }
+
+    // no products can be assigned to this subcategoryid when deleteing
+    // checking if any products exist with this subcategoryid
+    const isProducts = await client.query(
+      `SELECT * FROM products WHERE subcategoryid=$1`,
+      [id]
+    );
+    if (isProducts.rows.length !== 0) {
+      res.status(400).json({
+        success: false,
+        message: "cannot delete subcategory with products assigned to it",
+      });
+      return;
+    }
+
+    // deletion query
+    await client.query(`DELETE FROM subCategories WHERE subcategoryid=$1`, [
+      id,
+    ]);
+    res.status(200).json({
+      success: true,
+      message: "successfully deleted subcategory",
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const getSubCategories = async (req: any, res: any) => {
+  try {
+    const { productcategoryid }: { productcategoryid: number | string } =
+      req.body;
+    console.log(req.body);
+    if (productcategoryid === "" || typeof productcategoryid === "string") {
+      res.json({
+        success: false,
+        message: "product category id error",
+      });
+      return;
+    }
+    const subCategoriesRows = await client.query(
+      `SELECT * FROM subCategories WHERE productcategoryid=$1`,
+      [productcategoryid]
+    );
+    res.status(200).json({
+      success: true,
+      subcategories: subCategoriesRows.rows,
+    });
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 const getAllProductCategories = async (req: any, res: any) => {
@@ -411,5 +674,9 @@ export {
   addProductCategory,
   getAllProductCategories,
   deleteProductCategory,
-  editProductCategory
+  editProductCategory,
+  getSubCategories,
+  addSubCategory,
+  editSubCategory,
+  deleteSubCategory,
 };
