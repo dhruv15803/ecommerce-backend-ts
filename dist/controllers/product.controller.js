@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteProduct = exports.editProduct = exports.getSubCategoryById = exports.getProductCategoryById = exports.getAllProducts = exports.getSubCategoriesByCategoryName = exports.deleteSubCategory = exports.editSubCategory = exports.addSubCategory = exports.getSubCategories = exports.editProductCategory = exports.deleteProductCategory = exports.getAllProductCategories = exports.addProductCategory = exports.addProduct = exports.uploadProductThumbnail = void 0;
+exports.sortByAmount = exports.deleteProduct = exports.editProduct = exports.getSubCategoryById = exports.getProductCategoryById = exports.getAllProducts = exports.getSubCategoriesByCategoryName = exports.deleteSubCategory = exports.editSubCategory = exports.addSubCategory = exports.getSubCategories = exports.editProductCategory = exports.deleteProductCategory = exports.getAllProductCategories = exports.addProductCategory = exports.addProduct = exports.uploadProductThumbnail = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 const cloudinary_1 = require("cloudinary");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -463,6 +463,50 @@ const addSubCategory = async (req, res) => {
     }
 };
 exports.addSubCategory = addSubCategory;
+const sortByAmount = async (req, res) => {
+    try {
+        const { sortByProductAmount } = req.body;
+        // need to be an admin to sort by products
+        if (!req.cookies?.accessToken) {
+            res.status(400).json({
+                success: false,
+                message: "user is not logged in",
+            });
+            return;
+        }
+        const payloadData = jsonwebtoken_1.default.verify(req.cookies.accessToken, String(process.env.JWT_SECRET));
+        console.log(payloadData);
+        const { userid } = Object(payloadData);
+        const loggedInUserRow = await index_1.client.query(`SELECT * FROM users WHERE userid=$1`, [Number(userid)]);
+        const loggedInUser = loggedInUserRow.rows[0];
+        if (loggedInUser.email !== process.env.ADMIN_EMAIL ||
+            loggedInUser.username !== process.env.ADMIN_USERNAME) {
+            res.status(400).json({
+                success: false,
+                message: "This action can only be performed by an admin",
+            });
+            return;
+        }
+        let productRows;
+        if (sortByProductAmount === 0) {
+            productRows = await index_1.client.query(`SELECT * FROM products`);
+        }
+        else if (sortByProductAmount === 1) {
+            productRows = await index_1.client.query(`SELECT * FROM products ORDER BY productprice ASC`);
+        }
+        else {
+            productRows = await index_1.client.query(`SELECT * FROM products ORDER BY productprice DESC`);
+        }
+        res.status(200).json({
+            "success": true,
+            "products": productRows.rows,
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+exports.sortByAmount = sortByAmount;
 const editSubCategory = async (req, res) => {
     try {
         const { newsubcategoryname, subcategoryid, productcategoryid, } = req.body;

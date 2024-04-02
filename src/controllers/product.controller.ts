@@ -644,6 +644,60 @@ const addSubCategory = async (req: any, res: any) => {
   }
 };
 
+
+const sortByAmount = async (req:any,res:any) => {
+try {
+    const {sortByProductAmount}:{sortByProductAmount:number} = req.body;
+  
+    // need to be an admin to sort by products
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+  
+    const payloadData: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+    console.log(payloadData);
+    const { userid } = Object(payloadData);
+  
+    const loggedInUserRow = await client.query(
+      `SELECT * FROM users WHERE userid=$1`,
+      [Number(userid)]
+    );
+    const loggedInUser = loggedInUserRow.rows[0];
+    if (
+      loggedInUser.email !== process.env.ADMIN_EMAIL ||
+      loggedInUser.username !== process.env.ADMIN_USERNAME
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "This action can only be performed by an admin",
+      });
+      return;
+    }
+    let productRows;
+    if(sortByProductAmount===0){
+       productRows = await client.query(`SELECT * FROM products`);
+    } else if(sortByProductAmount===1){
+      productRows = await client.query(`SELECT * FROM products ORDER BY productprice ASC`);
+    } else{
+      productRows = await client.query(`SELECT * FROM products ORDER BY productprice DESC`);
+    }
+    res.status(200).json({
+      "success":true,
+      "products":productRows.rows,
+    })
+} catch (error) {
+  console.log(error);
+}
+}
+
+
 const editSubCategory = async (req: any, res: any) => {
   try {
     const {
@@ -939,4 +993,5 @@ export {
   getSubCategoryById,
   editProduct,
   deleteProduct,
+  sortByAmount,
 };
