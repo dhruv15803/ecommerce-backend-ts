@@ -69,6 +69,7 @@ app.post('/product/getSubCategories', product_controller_1.getSubCategories);
 app.post('/product/addSubCategory', product_controller_1.addSubCategory);
 app.put('/product/editSubCategory', product_controller_1.editSubCategory);
 app.delete('/product/deleteSubCategory/:id', product_controller_1.deleteSubCategory);
+app.post('/product/getSubCategoriesByCategoryName', product_controller_1.getSubCategoriesByCategoryName);
 app.listen(port, () => {
     console.log(`server running at http://localhost:${port}`);
 });

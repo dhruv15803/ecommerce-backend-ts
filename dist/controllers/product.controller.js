@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteSubCategory = exports.editSubCategory = exports.addSubCategory = exports.getSubCategories = exports.editProductCategory = exports.deleteProductCategory = exports.getAllProductCategories = exports.addProductCategory = exports.addProduct = exports.uploadProductThumbnail = void 0;
+exports.getSubCategoriesByCategoryName = exports.deleteSubCategory = exports.editSubCategory = exports.addSubCategory = exports.getSubCategories = exports.editProductCategory = exports.deleteProductCategory = exports.getAllProductCategories = exports.addProductCategory = exports.addProduct = exports.uploadProductThumbnail = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 const cloudinary_1 = require("cloudinary");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -64,7 +64,8 @@ const uploadProductThumbnail = async (req, res) => {
 exports.uploadProductThumbnail = uploadProductThumbnail;
 const addProduct = async (req, res) => {
     try {
-        const { productName, productThumbnailUrl, productDescription, productPrice, productStock, productCategory, productSubCategory, } = req.body;
+        const { productName, productThumbnailUrl, productDescription, productPrice, productStock, productCategory, subCategory, } = req.body;
+        console.log(req.body);
         // checking if logged in user is admin or not
         if (!req.cookies?.accessToken) {
             res.status(400).json({
@@ -93,32 +94,33 @@ const addProduct = async (req, res) => {
             productPrice,
             productStock,
             productCategory,
+            subCategory,
         ];
+        let isEmpty = false;
         productFields.forEach((val) => {
             if (typeof val === "string") {
                 if (val.trim() === "") {
-                    res.status(400).json({
-                        success: false,
-                        message: "Please enter all required fields",
-                    });
-                    return;
+                    isEmpty = true;
                 }
             }
             else {
                 if (val === 0) {
-                    res.status(400).json({
-                        success: false,
-                        message: "please enter all required fields",
-                    });
-                    return;
+                    isEmpty = true;
                 }
             }
         });
+        if (isEmpty) {
+            res.status(400).json({
+                success: false,
+                message: "Please enter all required fields",
+            });
+            return;
+        }
         // getting productcategoryif from categoryname:productCategory
         const productCategoryRow = await index_1.client.query(`SELECT * FROM productCategories WHERE categoryname=$1`, [productCategory]);
         const { productcategoryid } = productCategoryRow.rows[0];
         // getting subcategoryid from subcategoryname and productcategoryid
-        const subCategoryRow = await index_1.client.query(`SELECT * FROM subCategories WHERE productcategoryid=$1 AND subcategoryname=$2`, [productcategoryid, productSubCategory]);
+        const subCategoryRow = await index_1.client.query(`SELECT * FROM subCategories WHERE productcategoryid=$1 AND subcategoryname=$2`, [productcategoryid, subCategory]);
         const { subcategoryid } = subCategoryRow.rows[0];
         const productRow = await index_1.client.query(`INSERT INTO products(productname,productdescription,productprice,productstock,productcategoryid,subcategoryid,productthumbnail) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`, [
             productName,
@@ -477,6 +479,39 @@ const getSubCategories = async (req, res) => {
     }
 };
 exports.getSubCategories = getSubCategories;
+const getSubCategoriesByCategoryName = async (req, res) => {
+    try {
+        const { categoryname } = req.body;
+        if (categoryname.trim() === "") {
+            res.json({
+                "success": false,
+                "message": "please select a category"
+            });
+            return;
+        }
+        // get category id from categoryname
+        const categoryRow = await index_1.client.query(`SELECT * FROM productCategories WHERE categoryname=$1`, [categoryname]);
+        const productcategoryid = categoryRow.rows[0].productcategoryid;
+        // getting subcategires
+        const subCategoriesRows = await index_1.client.query(`SELECT * FROM subCategories WHERE productcategoryid=$1`, [productcategoryid]);
+        if (subCategoriesRows.rows.length === 0) {
+            res.status(400).json({
+                "success": false,
+                "message": "please add a subcategory for this product category",
+                "subcategories": [],
+            });
+            return;
+        }
+        res.status(200).json({
+            success: true,
+            subcategories: subCategoriesRows.rows,
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+exports.getSubCategoriesByCategoryName = getSubCategoriesByCategoryName;
 const getAllProductCategories = async (req, res) => {
     try {
         const productCategoryRows = await index_1.client.query(`SELECT * FROM productCategories`);

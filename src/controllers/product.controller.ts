@@ -79,7 +79,7 @@ const addProduct = async (req: any, res: any) => {
       productPrice: number;
       productStock: number;
       productCategory: string;
-      productSubCategory: string;
+      subCategory: string;
     };
 
     const {
@@ -89,8 +89,9 @@ const addProduct = async (req: any, res: any) => {
       productPrice,
       productStock,
       productCategory,
-      productSubCategory,
+      subCategory,
     }: productFieldsType = req.body;
+    console.log(req.body);
     // checking if logged in user is admin or not
     if (!req.cookies?.accessToken) {
       res.status(400).json({
@@ -130,26 +131,31 @@ const addProduct = async (req: any, res: any) => {
       productPrice,
       productStock,
       productCategory,
+      subCategory,
     ];
+
+    let isEmpty = false;
+
     productFields.forEach((val) => {
       if (typeof val === "string") {
         if (val.trim() === "") {
-          res.status(400).json({
-            success: false,
-            message: "Please enter all required fields",
-          });
-          return;
+          isEmpty=true;
         }
       } else {
         if (val === 0) {
-          res.status(400).json({
-            success: false,
-            message: "please enter all required fields",
-          });
-          return;
+          isEmpty=true;
         }
       }
     });
+
+    if(isEmpty){
+      res.status(400).json({
+        success: false,
+        message: "Please enter all required fields",
+      });
+      return;
+    }
+
     // getting productcategoryif from categoryname:productCategory
     const productCategoryRow = await client.query(
       `SELECT * FROM productCategories WHERE categoryname=$1`,
@@ -160,7 +166,7 @@ const addProduct = async (req: any, res: any) => {
     // getting subcategoryid from subcategoryname and productcategoryid
     const subCategoryRow = await client.query(
       `SELECT * FROM subCategories WHERE productcategoryid=$1 AND subcategoryname=$2`,
-      [productcategoryid, productSubCategory]
+      [productcategoryid, subCategory]
     );
     const { subcategoryid } = subCategoryRow.rows[0];
 
@@ -654,6 +660,46 @@ const getSubCategories = async (req: any, res: any) => {
   }
 };
 
+const getSubCategoriesByCategoryName = async (req: any, res: any) => {
+  try {
+    const { categoryname } = req.body;
+    if(categoryname.trim()===""){
+      res.json({
+        "success":false,
+        "message":"please select a category"
+      })
+      return;
+    }
+    // get category id from categoryname
+    const categoryRow = await client.query(
+      `SELECT * FROM productCategories WHERE categoryname=$1`,
+      [categoryname]
+    );
+    const productcategoryid = categoryRow.rows[0].productcategoryid;
+
+    // getting subcategires
+    const subCategoriesRows = await client.query(
+      `SELECT * FROM subCategories WHERE productcategoryid=$1`,
+      [productcategoryid]
+    );
+    if(subCategoriesRows.rows.length===0){
+      res.status(400).json({
+        "success":false,
+        "message":"please add a subcategory for this product category",
+        "subcategories":[],
+      })
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      subcategories: subCategoriesRows.rows,
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 const getAllProductCategories = async (req: any, res: any) => {
   try {
     const productCategoryRows = await client.query(
@@ -679,4 +725,5 @@ export {
   addSubCategory,
   editSubCategory,
   deleteSubCategory,
+  getSubCategoriesByCategoryName,
 };
