@@ -139,16 +139,16 @@ const addProduct = async (req: any, res: any) => {
     productFields.forEach((val) => {
       if (typeof val === "string") {
         if (val.trim() === "") {
-          isEmpty=true;
+          isEmpty = true;
         }
       } else {
         if (val === 0) {
-          isEmpty=true;
+          isEmpty = true;
         }
       }
     });
 
-    if(isEmpty){
+    if (isEmpty) {
       res.status(400).json({
         success: false,
         message: "Please enter all required fields",
@@ -187,6 +187,122 @@ const addProduct = async (req: any, res: any) => {
       success: true,
       message: "successfully added product",
       product: productRow.rows[0],
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const editProduct = async (req: any, res: any) => {
+  try {
+    type productFieldsType = {
+      newProductName: string;
+      newProductThumbnailUrl: string;
+      newProductDescription: string;
+      newProductPrice: number;
+      newProductStock: number;
+      newProductCategoryId: number;
+      newSubCategoryId: number;
+      productid: number;
+    };
+
+    const {
+      newProductName,
+      newProductPrice,
+      newProductStock,
+      newProductDescription,
+      newProductThumbnailUrl,
+      newProductCategoryId,
+      newSubCategoryId,
+      productid,
+    }: productFieldsType = req.body;
+
+    // need to be an admin
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+
+    const payloadData: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+    console.log(payloadData);
+    const { userid } = Object(payloadData);
+
+    const loggedInUserRow = await client.query(
+      `SELECT * FROM users WHERE userid=$1`,
+      [Number(userid)]
+    );
+    const loggedInUser = loggedInUserRow.rows[0];
+    if (
+      loggedInUser.email !== process.env.ADMIN_EMAIL ||
+      loggedInUser.username !== process.env.ADMIN_USERNAME
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "This action can only be performed by an admin",
+      });
+      return;
+    }
+
+    // fields cannot be empty
+    let isEmpty = false;
+    const newProductFields = [
+      newProductName,
+      newProductPrice,
+      newProductStock,
+      newProductDescription,
+      newProductThumbnailUrl,
+      newProductCategoryId,
+      newSubCategoryId,
+    ];
+    newProductFields.forEach((field) => {
+      if (typeof field === "string") {
+        if (field.trim() === "") {
+          isEmpty = true;
+        }
+      } else {
+        if (field === 0) {
+          isEmpty = true;
+        }
+      }
+    });
+    if (isEmpty) {
+      res.status(400).json({
+        success: false,
+        message: "please enter all product fields",
+      });
+      return;
+    }
+
+    // update query
+    await client.query(
+      `UPDATE products SET productname=$1,productdescription=$2,productprice=$3,productstock=$4,productcategoryid=$5,subcategoryid=$6,productthumbnail=$7 WHERE productid=$8`,
+      [
+        newProductName,
+        newProductDescription,
+        newProductPrice,
+        newProductStock,
+        newProductCategoryId,
+        newSubCategoryId,
+        newProductThumbnailUrl,
+        productid,
+      ]
+    );
+
+    // getting updated product
+    const updatedProductRow = await client.query(
+      `SELECT * FROM products WHERE productid=$1`,
+      [productid]
+    );
+    res.status(200).json({
+      success: true,
+      updatedProduct: updatedProductRow.rows[0],
+      message: "successfully edited product",
     });
   } catch (error) {
     console.log(error);
@@ -663,11 +779,11 @@ const getSubCategories = async (req: any, res: any) => {
 const getSubCategoriesByCategoryName = async (req: any, res: any) => {
   try {
     const { categoryname } = req.body;
-    if(categoryname.trim()===""){
+    if (categoryname.trim() === "") {
       res.json({
-        "success":false,
-        "message":"please select a category"
-      })
+        success: false,
+        message: "please select a category",
+      });
       return;
     }
     // get category id from categoryname
@@ -682,18 +798,50 @@ const getSubCategoriesByCategoryName = async (req: any, res: any) => {
       `SELECT * FROM subCategories WHERE productcategoryid=$1`,
       [productcategoryid]
     );
-    if(subCategoriesRows.rows.length===0){
+    if (subCategoriesRows.rows.length === 0) {
       res.status(400).json({
-        "success":false,
-        "message":"please add a subcategory for this product category",
-        "subcategories":[],
-      })
+        success: false,
+        message: "please add a subcategory for this product category",
+        subcategories: [],
+      });
       return;
     }
 
     res.status(200).json({
       success: true,
       subcategories: subCategoriesRows.rows,
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const getProductCategoryById = async (req: any, res: any) => {
+  try {
+    const { productcategoryid } = req.body;
+    const productCategoryRow = await client.query(
+      `SELECT * FROM productCategories WHERE productcategoryid=$1`,
+      [productcategoryid]
+    );
+    res.status(200).json({
+      success: true,
+      categoryname: productCategoryRow.rows[0].categoryname,
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const getSubCategoryById = async (req: any, res: any) => {
+  try {
+    const { productcategoryid, subcategoryid } = req.body;
+    const subCategoryRow = await client.query(
+      `SELECT * FROM subCategories WHERE productcategoryid=$1 AND subcategoryid=$2`,
+      [productcategoryid, subcategoryid]
+    );
+    res.status(200).json({
+      success: true,
+      subcategoryname: subCategoryRow.rows[0].subcategoryname,
     });
   } catch (error) {
     console.log(error);
@@ -714,6 +862,18 @@ const getAllProductCategories = async (req: any, res: any) => {
   }
 };
 
+const getAllProducts = async (req: any, res: any) => {
+  try {
+    const productRows = await client.query(`SELECT * FROM products`);
+    res.status(200).json({
+      success: true,
+      products: productRows.rows,
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 export {
   uploadProductThumbnail,
   addProduct,
@@ -726,4 +886,8 @@ export {
   editSubCategory,
   deleteSubCategory,
   getSubCategoriesByCategoryName,
+  getAllProducts,
+  getProductCategoryById,
+  getSubCategoryById,
+  editProduct,
 };

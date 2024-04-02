@@ -8,7 +8,7 @@ import multer from 'multer';
 import { getLoggedInUser, loginUser, logoutUser, registerUser, uploadAvatar } from './controllers/user.controller';
 import cookieParser from 'cookie-parser';
 import cors from 'cors'
-import { addProduct, addProductCategory, addSubCategory, deleteProductCategory, deleteSubCategory, editProductCategory, editSubCategory, getAllProductCategories, getSubCategories, getSubCategoriesByCategoryName, uploadProductThumbnail } from './controllers/product.controller';
+import { addProduct, addProductCategory, addSubCategory, deleteProductCategory, deleteSubCategory, editProduct, editProductCategory, editSubCategory, getAllProductCategories, getAllProducts, getProductCategoryById, getSubCategories, getSubCategoriesByCategoryName, getSubCategoryById, uploadProductThumbnail } from './controllers/product.controller';
 
 type dbObj = {
     database:string | undefined;
@@ -77,6 +77,7 @@ app.post('/product/uploadProductThumbnail',upload.single('productThumbnail'),upl
 app.post('/product/add',addProduct);
 app.post('/product/addCategory',addProductCategory);
 app.get('/product/getAllProductCategories',getAllProductCategories);
+app.get('/product/getAllProducts',getAllProducts);
 app.delete('/product/deleteProductCategory/:id',deleteProductCategory);
 app.put('/product/editProductCategory',editProductCategory);
 app.post('/product/getSubCategories',getSubCategories);
@@ -84,6 +85,10 @@ app.post('/product/addSubCategory',addSubCategory);
 app.put('/product/editSubCategory',editSubCategory);
 app.delete('/product/deleteSubCategory/:id',deleteSubCategory);
 app.post('/product/getSubCategoriesByCategoryName',getSubCategoriesByCategoryName);
+app.post('/product/getProductCategoryById',getProductCategoryById);
+app.post('/product/getSubCategoryById',getSubCategoryById);
+app.put('/product/edit',editProduct);
+
 
 app.listen(port,()=>{
     console.log(`server running at http://localhost:${port}`);

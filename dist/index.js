@@ -63,6 +63,7 @@ app.post('/product/uploadProductThumbnail', upload.single('productThumbnail'), p
 app.post('/product/add', product_controller_1.addProduct);
 app.post('/product/addCategory', product_controller_1.addProductCategory);
 app.get('/product/getAllProductCategories', product_controller_1.getAllProductCategories);
+app.get('/product/getAllProducts', product_controller_1.getAllProducts);
 app.delete('/product/deleteProductCategory/:id', product_controller_1.deleteProductCategory);
 app.put('/product/editProductCategory', product_controller_1.editProductCategory);
 app.post('/product/getSubCategories', product_controller_1.getSubCategories);
@@ -70,6 +71,9 @@ app.post('/product/addSubCategory', product_controller_1.addSubCategory);
 app.put('/product/editSubCategory', product_controller_1.editSubCategory);
 app.delete('/product/deleteSubCategory/:id', product_controller_1.deleteSubCategory);
 app.post('/product/getSubCategoriesByCategoryName', product_controller_1.getSubCategoriesByCategoryName);
+app.post('/product/getProductCategoryById', product_controller_1.getProductCategoryById);
+app.post('/product/getSubCategoryById', product_controller_1.getSubCategoryById);
+app.put('/product/edit', product_controller_1.editProduct);
 app.listen(port, () => {
     console.log(`server running at http://localhost:${port}`);
 });

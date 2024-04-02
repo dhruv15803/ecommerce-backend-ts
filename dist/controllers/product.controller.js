@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSubCategoriesByCategoryName = exports.deleteSubCategory = exports.editSubCategory = exports.addSubCategory = exports.getSubCategories = exports.editProductCategory = exports.deleteProductCategory = exports.getAllProductCategories = exports.addProductCategory = exports.addProduct = exports.uploadProductThumbnail = void 0;
+exports.editProduct = exports.getSubCategoryById = exports.getProductCategoryById = exports.getAllProducts = exports.getSubCategoriesByCategoryName = exports.deleteSubCategory = exports.editSubCategory = exports.addSubCategory = exports.getSubCategories = exports.editProductCategory = exports.deleteProductCategory = exports.getAllProductCategories = exports.addProductCategory = exports.addProduct = exports.uploadProductThumbnail = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 const cloudinary_1 = require("cloudinary");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -142,6 +142,84 @@ const addProduct = async (req, res) => {
     }
 };
 exports.addProduct = addProduct;
+const editProduct = async (req, res) => {
+    try {
+        const { newProductName, newProductPrice, newProductStock, newProductDescription, newProductThumbnailUrl, newProductCategoryId, newSubCategoryId, productid, } = req.body;
+        // need to be an admin
+        if (!req.cookies?.accessToken) {
+            res.status(400).json({
+                success: false,
+                message: "user is not logged in",
+            });
+            return;
+        }
+        const payloadData = jsonwebtoken_1.default.verify(req.cookies.accessToken, String(process.env.JWT_SECRET));
+        console.log(payloadData);
+        const { userid } = Object(payloadData);
+        const loggedInUserRow = await index_1.client.query(`SELECT * FROM users WHERE userid=$1`, [Number(userid)]);
+        const loggedInUser = loggedInUserRow.rows[0];
+        if (loggedInUser.email !== process.env.ADMIN_EMAIL ||
+            loggedInUser.username !== process.env.ADMIN_USERNAME) {
+            res.status(400).json({
+                success: false,
+                message: "This action can only be performed by an admin",
+            });
+            return;
+        }
+        // fields cannot be empty
+        let isEmpty = false;
+        const newProductFields = [
+            newProductName,
+            newProductPrice,
+            newProductStock,
+            newProductDescription,
+            newProductThumbnailUrl,
+            newProductCategoryId,
+            newSubCategoryId,
+        ];
+        newProductFields.forEach((field) => {
+            if (typeof field === "string") {
+                if (field.trim() === "") {
+                    isEmpty = true;
+                }
+            }
+            else {
+                if (field === 0) {
+                    isEmpty = true;
+                }
+            }
+        });
+        if (isEmpty) {
+            res.status(400).json({
+                success: false,
+                message: "please enter all product fields",
+            });
+            return;
+        }
+        // update query
+        await index_1.client.query(`UPDATE products SET productname=$1,productdescription=$2,productprice=$3,productstock=$4,productcategoryid=$5,subcategoryid=$6,productthumbnail=$7 WHERE productid=$8`, [
+            newProductName,
+            newProductDescription,
+            newProductPrice,
+            newProductStock,
+            newProductCategoryId,
+            newSubCategoryId,
+            newProductThumbnailUrl,
+            productid,
+        ]);
+        // getting updated product
+        const updatedProductRow = await index_1.client.query(`SELECT * FROM products WHERE productid=$1`, [productid]);
+        res.status(200).json({
+            success: true,
+            updatedProduct: updatedProductRow.rows[0],
+            message: "successfully edited product",
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+exports.editProduct = editProduct;
 const addProductCategory = async (req, res) => {
     try {
         const { productCategory } = req.body;
@@ -484,8 +562,8 @@ const getSubCategoriesByCategoryName = async (req, res) => {
         const { categoryname } = req.body;
         if (categoryname.trim() === "") {
             res.json({
-                "success": false,
-                "message": "please select a category"
+                success: false,
+                message: "please select a category",
             });
             return;
         }
@@ -496,9 +574,9 @@ const getSubCategoriesByCategoryName = async (req, res) => {
         const subCategoriesRows = await index_1.client.query(`SELECT * FROM subCategories WHERE productcategoryid=$1`, [productcategoryid]);
         if (subCategoriesRows.rows.length === 0) {
             res.status(400).json({
-                "success": false,
-                "message": "please add a subcategory for this product category",
-                "subcategories": [],
+                success: false,
+                message: "please add a subcategory for this product category",
+                subcategories: [],
             });
             return;
         }
@@ -512,6 +590,34 @@ const getSubCategoriesByCategoryName = async (req, res) => {
     }
 };
 exports.getSubCategoriesByCategoryName = getSubCategoriesByCategoryName;
+const getProductCategoryById = async (req, res) => {
+    try {
+        const { productcategoryid } = req.body;
+        const productCategoryRow = await index_1.client.query(`SELECT * FROM productCategories WHERE productcategoryid=$1`, [productcategoryid]);
+        res.status(200).json({
+            success: true,
+            categoryname: productCategoryRow.rows[0].categoryname,
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+exports.getProductCategoryById = getProductCategoryById;
+const getSubCategoryById = async (req, res) => {
+    try {
+        const { productcategoryid, subcategoryid } = req.body;
+        const subCategoryRow = await index_1.client.query(`SELECT * FROM subCategories WHERE productcategoryid=$1 AND subcategoryid=$2`, [productcategoryid, subcategoryid]);
+        res.status(200).json({
+            success: true,
+            subcategoryname: subCategoryRow.rows[0].subcategoryname,
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+exports.getSubCategoryById = getSubCategoryById;
 const getAllProductCategories = async (req, res) => {
     try {
         const productCategoryRows = await index_1.client.query(`SELECT * FROM productCategories`);
@@ -525,3 +631,16 @@ const getAllProductCategories = async (req, res) => {
     }
 };
 exports.getAllProductCategories = getAllProductCategories;
+const getAllProducts = async (req, res) => {
+    try {
+        const productRows = await index_1.client.query(`SELECT * FROM products`);
+        res.status(200).json({
+            success: true,
+            products: productRows.rows,
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+exports.getAllProducts = getAllProducts;
