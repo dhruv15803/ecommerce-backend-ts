@@ -8,7 +8,7 @@ import multer from 'multer';
 import { getLoggedInUser, loginUser, logoutUser, registerUser, uploadAvatar } from './controllers/user.controller';
 import cookieParser from 'cookie-parser';
 import cors from 'cors'
-import { addProduct, addProductCategory, addSubCategory, deleteProductCategory, deleteSubCategory, editProduct, editProductCategory, editSubCategory, getAllProductCategories, getAllProducts, getProductCategoryById, getSubCategories, getSubCategoriesByCategoryName, getSubCategoryById, uploadProductThumbnail } from './controllers/product.controller';
+import { addProduct, addProductCategory, addSubCategory, deleteProduct, deleteProductCategory, deleteSubCategory, editProduct, editProductCategory, editSubCategory, getAllProductCategories, getAllProducts, getProductCategoryById, getSubCategories, getSubCategoriesByCategoryName, getSubCategoryById, uploadProductThumbnail } from './controllers/product.controller';
 
 type dbObj = {
     database:string | undefined;
@@ -88,6 +88,7 @@ app.post('/product/getSubCategoriesByCategoryName',getSubCategoriesByCategoryNam
 app.post('/product/getProductCategoryById',getProductCategoryById);
 app.post('/product/getSubCategoryById',getSubCategoryById);
 app.put('/product/edit',editProduct);
+app.delete('/product/deleteProduct/:id',deleteProduct);
 
 
 app.listen(port,()=>{

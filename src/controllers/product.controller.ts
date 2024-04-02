@@ -193,6 +193,54 @@ const addProduct = async (req: any, res: any) => {
   }
 };
 
+const deleteProduct = async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    console.log(id);
+
+    // check if user is admin
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+
+    const payloadData: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+    console.log(payloadData);
+    const { userid } = Object(payloadData);
+
+    const loggedInUserRow = await client.query(
+      `SELECT * FROM users WHERE userid=$1`,
+      [Number(userid)]
+    );
+    const loggedInUser = loggedInUserRow.rows[0];
+    if (
+      loggedInUser.email !== process.env.ADMIN_EMAIL ||
+      loggedInUser.username !== process.env.ADMIN_USERNAME
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "This action can only be performed by an admin",
+      });
+      return;
+    }
+
+    // deletion query
+    await client.query(`DELETE FROM products WHERE productid=$1`, [id]);
+    res.status(200).json({
+      success: true,
+      message: "successfully deleted product",
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 const editProduct = async (req: any, res: any) => {
   try {
     type productFieldsType = {
@@ -890,4 +938,5 @@ export {
   getProductCategoryById,
   getSubCategoryById,
   editProduct,
+  deleteProduct,
 };

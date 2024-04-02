@@ -74,6 +74,7 @@ app.post('/product/getSubCategoriesByCategoryName', product_controller_1.getSubC
 app.post('/product/getProductCategoryById', product_controller_1.getProductCategoryById);
 app.post('/product/getSubCategoryById', product_controller_1.getSubCategoryById);
 app.put('/product/edit', product_controller_1.editProduct);
+app.delete('/product/deleteProduct/:id', product_controller_1.deleteProduct);
 app.listen(port, () => {
     console.log(`server running at http://localhost:${port}`);
 });
