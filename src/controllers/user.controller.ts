@@ -22,7 +22,7 @@ interface User {
   firstname: string;
   lastname: string;
   avatar?: string;
-  isadmin?:boolean;
+  isadmin?: boolean;
   address_field_1?: string;
   address_field_2?: string;
   address_field_3?: string;
@@ -40,7 +40,7 @@ const registerUser = async (req: any, res: any) => {
     }: User = req.body;
     let avatarUrl: string = "";
     let localFilePath: string;
-    let isadmin:boolean = false;
+    let isadmin: boolean = false;
     // any register fields cannot be empty
     const registerFields: string[] = [
       email,
@@ -58,7 +58,6 @@ const registerUser = async (req: any, res: any) => {
       });
       return;
     }
-
 
     registerFields.forEach((val) => {
       if (val.trim() === "") {
@@ -115,14 +114,24 @@ const registerUser = async (req: any, res: any) => {
 
     // hashing password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password,salt);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     // isadmin
-    if(username.trim().toLowerCase()===process.env.ADMIN_USERNAME && email.trim().toLowerCase()===process.env.ADMIN_EMAIL && password.trim()===process.env.ADMIN_PASSWORD){
-      isadmin=true;
+    if (
+      username.trim().toLowerCase() === process.env.ADMIN_USERNAME &&
+      email.trim().toLowerCase() === process.env.ADMIN_EMAIL &&
+      password.trim() === process.env.ADMIN_PASSWORD
+    ) {
+      isadmin = true;
     }
 
-    const newUser = await client.query(`INSERT INTO users(username,email,firstname,lastname,avatarurl,isadmin,password) VALUES('${username.trim().toLowerCase()}','${email.trim().toLowerCase()}','${firstname.trim()}','${lastname.trim()}','${avatarUrl}',${isadmin},'${hashedPassword}')`)
+    const newUser = await client.query(
+      `INSERT INTO users(username,email,firstname,lastname,avatarurl,isadmin,password) VALUES('${username
+        .trim()
+        .toLowerCase()}','${email
+        .trim()
+        .toLowerCase()}','${firstname.trim()}','${lastname.trim()}','${avatarUrl}',${isadmin},'${hashedPassword}')`
+    );
     res.status(200).json({
       success: true,
       message: "user registered successfully",
@@ -173,17 +182,19 @@ const loginUser = async (req: any, res: any) => {
       {
         expiresIn: "1d",
       }
-    );    
+    );
 
-    res.status(200).cookie("accessToken", token, {
-      httpOnly: true,
-      expires: new Date(Date.now() + 60 * 1000 * 60 * 24),
-    }).json({
-      success: true,
-      message: "user logged in successfully",
-      user: isUser.rows[0],
-    });
-
+    res
+      .status(200)
+      .cookie("accessToken", token, {
+        httpOnly: true,
+        expires: new Date(Date.now() + 60 * 1000 * 60 * 24),
+      })
+      .json({
+        success: true,
+        message: "user logged in successfully",
+        user: isUser.rows[0],
+      });
   } catch (error) {
     console.log(error);
   }
@@ -268,10 +279,124 @@ const getLoggedInUser = async (req: any, res: any) => {
       success: true,
       user: user.rows[0],
     });
-
   } catch (error) {
     console.log(error);
   }
 };
 
-export { registerUser, loginUser, logoutUser, getLoggedInUser, uploadAvatar };
+const editUsername = async (req: any, res: any) => {
+  try {
+    const { newUsername }:{newUsername:string} = req.body;
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+
+    const payload: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+
+    const { userid } = Object(payload);
+
+    // check if new username is empty
+    if (newUsername.trim() === "") {
+      res.status(400).json({
+        success: false,
+        message: "please enter a username",
+      });
+      return;
+    }
+
+    // check if another user has this username
+    const isUsername = await client.query(
+      `SELECT * FROM users WHERE username=$1`,
+      [newUsername.trim().toLowerCase()]
+    );
+    if (isUsername.rows.length !== 0) {
+      res.status(400).json({
+        success: false,
+        message: "username already exists",
+      });
+      return;
+    }
+    // updating user with new Username
+    await client.query(`UPDATE users SET username=$1 WHERE userid=$2`, [
+      newUsername.trim().toLowerCase(),
+      userid,
+    ]);
+
+    // getting updated user
+    const userRow = await client.query(`SELECT * FROM users WHERE userid=$1`, [
+      userid,
+    ]);
+    res.status(200).json({
+      success: true,
+      newUser: userRow.rows[0],
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const editPassword = async (req: any, res: any) => {
+  try {
+    const { newPassword }:{newPassword:string} = req.body;
+    console.log(newPassword);
+    // need to be logged in
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+
+    const payload: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+
+    const { userid } = Object(payload);
+    if (newPassword.trim() === "") {
+      res.status(400).json({
+        success: false,
+        message: "password cannot be an empty field",
+      });
+      return;
+    }
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // updating password in user
+    await client.query(`UPDATE users SET password=$1 WHERE userid=$2`, [
+      hashedPassword,
+      userid,
+    ]);
+
+    // getting updated user
+    const userRow = await client.query(`SELECT * FROM users WHERE userid=$1`, [
+      userid,
+    ]);
+    res.status(200).json({
+      success: true,
+      message: "successfully edited password",
+      newUser: userRow.rows[0],
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  getLoggedInUser,
+  uploadAvatar,
+  editUsername,
+  editPassword,
+};

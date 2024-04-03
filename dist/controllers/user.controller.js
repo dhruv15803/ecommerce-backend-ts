@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadAvatar = exports.getLoggedInUser = exports.logoutUser = exports.loginUser = exports.registerUser = void 0;
+exports.editPassword = exports.editUsername = exports.uploadAvatar = exports.getLoggedInUser = exports.logoutUser = exports.loginUser = exports.registerUser = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const index_1 = require("../index");
 const cloudinary_1 = require("cloudinary");
@@ -88,10 +88,16 @@ const registerUser = async (req, res) => {
         const salt = await bcrypt_1.default.genSalt(10);
         const hashedPassword = await bcrypt_1.default.hash(password, salt);
         // isadmin
-        if (username.trim().toLowerCase() === process.env.ADMIN_USERNAME && email.trim().toLowerCase() === process.env.ADMIN_EMAIL && password.trim() === process.env.ADMIN_PASSWORD) {
+        if (username.trim().toLowerCase() === process.env.ADMIN_USERNAME &&
+            email.trim().toLowerCase() === process.env.ADMIN_EMAIL &&
+            password.trim() === process.env.ADMIN_PASSWORD) {
             isadmin = true;
         }
-        const newUser = await index_1.client.query(`INSERT INTO users(username,email,firstname,lastname,avatarurl,isadmin,password) VALUES('${username.trim().toLowerCase()}','${email.trim().toLowerCase()}','${firstname.trim()}','${lastname.trim()}','${avatarUrl}',${isadmin},'${hashedPassword}')`);
+        const newUser = await index_1.client.query(`INSERT INTO users(username,email,firstname,lastname,avatarurl,isadmin,password) VALUES('${username
+            .trim()
+            .toLowerCase()}','${email
+            .trim()
+            .toLowerCase()}','${firstname.trim()}','${lastname.trim()}','${avatarUrl}',${isadmin},'${hashedPassword}')`);
         res.status(200).json({
             success: true,
             message: "user registered successfully",
@@ -138,10 +144,13 @@ const loginUser = async (req, res) => {
         const token = jsonwebtoken_1.default.sign({ userid: isUser.rows[0].userid }, String(process.env.JWT_SECRET), {
             expiresIn: "1d",
         });
-        res.status(200).cookie("accessToken", token, {
+        res
+            .status(200)
+            .cookie("accessToken", token, {
             httpOnly: true,
             expires: new Date(Date.now() + 60 * 1000 * 60 * 24),
-        }).json({
+        })
+            .json({
             success: true,
             message: "user logged in successfully",
             user: isUser.rows[0],
@@ -230,3 +239,94 @@ const getLoggedInUser = async (req, res) => {
     }
 };
 exports.getLoggedInUser = getLoggedInUser;
+const editUsername = async (req, res) => {
+    try {
+        const { newUsername } = req.body;
+        if (!req.cookies?.accessToken) {
+            res.status(400).json({
+                success: false,
+                message: "user is not logged in",
+            });
+            return;
+        }
+        const payload = jsonwebtoken_1.default.verify(req.cookies.accessToken, String(process.env.JWT_SECRET));
+        const { userid } = Object(payload);
+        // check if new username is empty
+        if (newUsername.trim() === "") {
+            res.status(400).json({
+                success: false,
+                message: "please enter a username",
+            });
+            return;
+        }
+        // check if another user has this username
+        const isUsername = await index_1.client.query(`SELECT * FROM users WHERE username=$1`, [newUsername.trim().toLowerCase()]);
+        if (isUsername.rows.length !== 0) {
+            res.status(400).json({
+                success: false,
+                message: "username already exists",
+            });
+            return;
+        }
+        // updating user with new Username
+        await index_1.client.query(`UPDATE users SET username=$1 WHERE userid=$2`, [
+            newUsername.trim().toLowerCase(),
+            userid,
+        ]);
+        // getting updated user
+        const userRow = await index_1.client.query(`SELECT * FROM users WHERE userid=$1`, [
+            userid,
+        ]);
+        res.status(200).json({
+            success: true,
+            newUser: userRow.rows[0],
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+exports.editUsername = editUsername;
+const editPassword = async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+        console.log(newPassword);
+        // need to be logged in
+        if (!req.cookies?.accessToken) {
+            res.status(400).json({
+                success: false,
+                message: "user is not logged in",
+            });
+            return;
+        }
+        const payload = jsonwebtoken_1.default.verify(req.cookies.accessToken, String(process.env.JWT_SECRET));
+        const { userid } = Object(payload);
+        if (newPassword.trim() === "") {
+            res.status(400).json({
+                success: false,
+                message: "password cannot be an empty field",
+            });
+            return;
+        }
+        const salt = await bcrypt_1.default.genSalt(10);
+        const hashedPassword = await bcrypt_1.default.hash(newPassword, salt);
+        // updating password in user
+        await index_1.client.query(`UPDATE users SET password=$1 WHERE userid=$2`, [
+            hashedPassword,
+            userid,
+        ]);
+        // getting updated user
+        const userRow = await index_1.client.query(`SELECT * FROM users WHERE userid=$1`, [
+            userid,
+        ]);
+        res.status(200).json({
+            success: true,
+            message: "successfully edited password",
+            newUser: userRow.rows[0],
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+exports.editPassword = editPassword;
