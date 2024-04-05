@@ -81,7 +81,7 @@ const addProduct = async (req: any, res: any) => {
       productCategory: string;
       subCategory: string;
     };
-
+    
     const {
       productName,
       productThumbnailUrl,
