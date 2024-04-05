@@ -5,7 +5,7 @@ dotenv.config({
 })
 import {Client} from 'pg'
 import multer from 'multer';
-import { editPassword, editUsername, getLoggedInUser, loginUser, logoutUser, registerUser, uploadAvatar } from './controllers/user.controller';
+import { editAvatar, editPassword, editUsername, getLoggedInUser, loginUser, logoutUser, registerUser, uploadAvatar } from './controllers/user.controller';
 import cookieParser from 'cookie-parser';
 import cors from 'cors'
 import { addProduct, addProductCategory, addSubCategory, deleteProduct, deleteProductCategory, deleteSubCategory, editProduct, editProductCategory, editSubCategory, getAllProductCategories, getAllProducts, getProductCategoryById, getSubCategories, getSubCategoriesByCategoryName, getSubCategoryById, sortByAmount, uploadProductThumbnail } from './controllers/product.controller';
@@ -72,6 +72,7 @@ app.get('/user/getLoggedInUser',getLoggedInUser);
 app.post('/user/uploadAvatar',upload.single('avatar'),uploadAvatar);
 app.put('/user/editUsername',editUsername);
 app.put('/user/editPassword',editPassword);
+app.put('/user/editAvatar',editAvatar);
 
 
 // product routes

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.editPassword = exports.editUsername = exports.uploadAvatar = exports.getLoggedInUser = exports.logoutUser = exports.loginUser = exports.registerUser = void 0;
+exports.editAvatar = exports.editPassword = exports.editUsername = exports.uploadAvatar = exports.getLoggedInUser = exports.logoutUser = exports.loginUser = exports.registerUser = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const index_1 = require("../index");
 const cloudinary_1 = require("cloudinary");
@@ -185,6 +185,7 @@ const logoutUser = async (req, res) => {
 exports.logoutUser = logoutUser;
 const uploadAvatar = async (req, res) => {
     try {
+        console.log(req.file);
         if (!req.file) {
             res.status(400).json({
                 success: false,
@@ -330,3 +331,38 @@ const editPassword = async (req, res) => {
     }
 };
 exports.editPassword = editPassword;
+const editAvatar = async (req, res) => {
+    try {
+        const { newAvatarUrl } = req.body;
+        // need to be logged in
+        if (!req.cookies?.accessToken) {
+            res.status(400).json({
+                success: false,
+                message: "user is not logged in",
+            });
+            return;
+        }
+        const payload = jsonwebtoken_1.default.verify(req.cookies.accessToken, String(process.env.JWT_SECRET));
+        const { userid } = Object(payload);
+        if (newAvatarUrl.trim() === "") {
+            res.status(400).json({
+                "success": false,
+                "message": "avatar url is empty"
+            });
+            return;
+        }
+        // update query
+        await index_1.client.query(`UPDATE users SET avatarurl=$1 WHERE userid=$2`, [newAvatarUrl, userid]);
+        // getting updated user
+        const newUserRow = await index_1.client.query(`SELECT * FROM users WHERE userid=$1`, [userid]);
+        res.status(200).json({
+            "success": true,
+            "message": "successfully edited avatar",
+            "newUser": newUserRow.rows[0],
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+exports.editAvatar = editAvatar;

@@ -60,6 +60,7 @@ app.get('/user/getLoggedInUser', user_controller_1.getLoggedInUser);
 app.post('/user/uploadAvatar', upload.single('avatar'), user_controller_1.uploadAvatar);
 app.put('/user/editUsername', user_controller_1.editUsername);
 app.put('/user/editPassword', user_controller_1.editPassword);
+app.put('/user/editAvatar', user_controller_1.editAvatar);
 // product routes
 app.post('/product/uploadProductThumbnail', upload.single('productThumbnail'), product_controller_1.uploadProductThumbnail);
 app.post('/product/add', product_controller_1.addProduct);

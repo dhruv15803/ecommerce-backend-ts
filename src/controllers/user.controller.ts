@@ -224,6 +224,7 @@ const logoutUser = async (req: any, res: any) => {
 
 const uploadAvatar = async (req: any, res: any) => {
   try {
+    console.log(req.file);
     if (!req.file) {
       res.status(400).json({
         success: false,
@@ -391,6 +392,50 @@ const editPassword = async (req: any, res: any) => {
   }
 };
 
+
+const editAvatar = async (req:any,res:any) => {
+try {
+    const {newAvatarUrl}:{newAvatarUrl:string} = req.body;
+    // need to be logged in
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+  
+    const payload: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+  
+    const { userid } = Object(payload);
+    if(newAvatarUrl.trim()===""){
+      res.status(400).json({
+        "success":false,
+        "message":"avatar url is empty"
+      })
+      return;
+    }
+  
+    // update query
+    await client.query(`UPDATE users SET avatarurl=$1 WHERE userid=$2`,[newAvatarUrl,userid]);
+  
+    // getting updated user
+    const newUserRow = await client.query(`SELECT * FROM users WHERE userid=$1`,[userid]);
+    res.status(200).json({
+      "success":true,
+      "message":"successfully edited avatar",
+      "newUser":newUserRow.rows[0],
+    })
+} catch (error) {
+  console.log(error);
+}
+
+
+}
+
 export {
   registerUser,
   loginUser,
@@ -399,4 +444,5 @@ export {
   uploadAvatar,
   editUsername,
   editPassword,
+  editAvatar,
 };
