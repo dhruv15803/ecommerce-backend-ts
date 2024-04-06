@@ -15,6 +15,7 @@ const user_controller_1 = require("./controllers/user.controller");
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const cors_1 = __importDefault(require("cors"));
 const product_controller_1 = require("./controllers/product.controller");
+const cart_controller_1 = require("./controllers/cart.controller");
 const app = (0, express_1.default)();
 const port = process.env.PORT;
 const storage = multer_1.default.diskStorage({
@@ -79,6 +80,12 @@ app.post('/product/getSubCategoryById', product_controller_1.getSubCategoryById)
 app.put('/product/edit', product_controller_1.editProduct);
 app.delete('/product/deleteProduct/:id', product_controller_1.deleteProduct);
 app.post('/product/sortByAmount', product_controller_1.sortByAmount);
+// cart routes
+app.post('/cart/add', cart_controller_1.addToCart);
+app.get('/cart/getCartProducts', cart_controller_1.getCartProducts);
+app.delete('/cart/delete/:id', cart_controller_1.deleteCartItem);
+app.put('/cart/incrementQty', cart_controller_1.incrementQty);
+app.put('/cart/decrementQty', cart_controller_1.decrementQty);
 app.listen(port, () => {
     console.log(`server running at http://localhost:${port}`);
 });
