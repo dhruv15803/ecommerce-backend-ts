@@ -8,7 +8,7 @@ import multer from 'multer';
 import { editAvatar, editPassword, editUsername, getLoggedInUser, loginUser, logoutUser, registerUser, uploadAvatar } from './controllers/user.controller';
 import cookieParser from 'cookie-parser';
 import cors from 'cors'
-import { addProduct, addProductCategory, addSubCategory, deleteProduct, deleteProductCategory, deleteSubCategory, editProduct, editProductCategory, editSubCategory, getAllProductCategories, getAllProducts, getProductCategoryById, getSubCategories, getSubCategoriesByCategoryName, getSubCategoryById, sortByAmount, uploadProductThumbnail } from './controllers/product.controller';
+import { addMultipleProducts, addProduct, addProductCategory, addSubCategory, deleteProduct, deleteProductCategory, deleteSubCategory, editProduct, editProductCategory, editSubCategory, getAllProductCategories, getAllProducts, getProductCategoryById, getSubCategories, getSubCategoriesByCategoryName, getSubCategoryById, sortByAmount, uploadProductThumbnail } from './controllers/product.controller';
 import { addToCart, decrementQty, deleteCartItem, getCartProducts, incrementQty } from './controllers/cart.controller';
 
 type dbObj = {
@@ -79,6 +79,7 @@ app.put('/user/editAvatar',editAvatar);
 // product routes
 app.post('/product/uploadProductThumbnail',upload.single('productThumbnail'),uploadProductThumbnail);
 app.post('/product/add',addProduct);
+app.post('/product/addCsv',addMultipleProducts);
 app.post('/product/addCategory',addProductCategory);
 app.get('/product/getAllProductCategories',getAllProductCategories);
 app.get('/product/getAllProducts',getAllProducts);

@@ -65,6 +65,7 @@ app.put('/user/editAvatar', user_controller_1.editAvatar);
 // product routes
 app.post('/product/uploadProductThumbnail', upload.single('productThumbnail'), product_controller_1.uploadProductThumbnail);
 app.post('/product/add', product_controller_1.addProduct);
+app.post('/product/addCsv', product_controller_1.addMultipleProducts);
 app.post('/product/addCategory', product_controller_1.addProductCategory);
 app.get('/product/getAllProductCategories', product_controller_1.getAllProductCategories);
 app.get('/product/getAllProducts', product_controller_1.getAllProducts);

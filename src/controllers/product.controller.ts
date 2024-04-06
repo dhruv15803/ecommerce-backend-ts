@@ -193,6 +193,67 @@ const addProduct = async (req: any, res: any) => {
   }
 };
 
+const addMultipleProducts = async (req:any,res:any) => {
+try {
+    const {csvData} = req.body;
+    console.log(csvData);
+    // csvData is an array
+    // need to be an admin to add products
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+  
+    const payloadData: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+    console.log(payloadData);
+    const { userid } = Object(payloadData);
+  
+    const loggedInUserRow = await client.query(
+      `SELECT * FROM users WHERE userid=$1`,
+      [Number(userid)]
+    );
+    const loggedInUser = loggedInUserRow.rows[0];
+    if (
+      loggedInUser.email !== process.env.ADMIN_EMAIL ||
+      loggedInUser.username !== process.env.ADMIN_USERNAME
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "This action can only be performed by an admin",
+      });
+      return;
+    }
+    let newProducts = [];
+    // looping through each object in csvData
+    for(let i=0;i<csvData.length;i++){
+      // getting categoryid from categoryname
+      const categoryRow = await client.query(`SELECT * FROM productCategories WHERE categoryname=$1`,[csvData[i].categoryname.trim().toLowerCase()]);
+      const productcategoryid=categoryRow.rows[0].productcategoryid;
+      // getting subcategoryid from subcategoryname and productcategoryid
+      const subCategoryRow = await client.query(`SELECT * FROM subCategories WHERE productcategoryid=$1 AND subcategoryname=$2`,[productcategoryid,csvData[i].subcategoryname.trim().toLowerCase()]);
+      const subcategoryid = subCategoryRow.rows[0].subcategoryid;
+  
+      // inserting into products
+      const newProductRow = await client.query(`INSERT INTO products(productname,productdescription,productprice,productstock,productcategoryid,subcategoryid,productthumbnail) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[csvData[i].productname,csvData[i].productdescription,csvData[i].productprice,csvData[i].productstock,productcategoryid,subcategoryid,csvData[i].productthumbnail]);
+      newProducts.push(newProductRow.rows[0])
+    }
+  
+    res.status(200).json({
+      "success":true,
+      "newProducts":newProducts,
+    })
+} catch (error) {
+  console.log(error);
+}
+
+}
+
 const deleteProduct = async (req: any, res: any) => {
   try {
     const { id } = req.params;
@@ -994,4 +1055,5 @@ export {
   editProduct,
   deleteProduct,
   sortByAmount,
+  addMultipleProducts,
 };
