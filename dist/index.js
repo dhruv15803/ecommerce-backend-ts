@@ -87,6 +87,7 @@ app.get('/cart/getCartProducts', cart_controller_1.getCartProducts);
 app.delete('/cart/delete/:id', cart_controller_1.deleteCartItem);
 app.put('/cart/incrementQty', cart_controller_1.incrementQty);
 app.put('/cart/decrementQty', cart_controller_1.decrementQty);
+app.post('/cart/checkout', cart_controller_1.stripeCheckout);
 app.listen(port, () => {
     console.log(`server running at http://localhost:${port}`);
 });

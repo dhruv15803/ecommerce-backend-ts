@@ -4,6 +4,9 @@ import dotenv from "dotenv";
 dotenv.config({
   path: "C:\\Users\\DHRUV\\Desktop\\typescript-projects\\ecommerce-app\\backendsrc\\.env",
 });
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_API_KEY!);
 
 const addToCart = async (req: any, res: any) => {
   try {
@@ -187,5 +190,79 @@ const decrementQty = async (req:any,res:any) => {
     console.log(error);
 }
 }
+ interface Product {
+  productid?: number;
+  productname: string;
+  productdescription: string;
+  productprice: number;
+  productstock: number;
+  productcategoryid: number;
+  subcategoryid: number;
+  productthumbnail: string;
+}
 
-export { addToCart,getCartProducts ,deleteCartItem,incrementQty,decrementQty};
+interface Cart extends Product {
+  cartid: number;
+  itemqty: number;
+  userid: number;
+}
+
+const stripeCheckout = async (req:any,res:any) => {
+try {
+    const {cart}:{cart:Cart[]} = req.body;
+    if (!req.cookies?.accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "user is not logged in",
+      });
+      return;
+    }
+
+    const payloadData: Object = jwt.verify(
+      req.cookies.accessToken,
+      String(process.env.JWT_SECRET)
+    );
+    console.log(payloadData);
+    const { userid } = Object(payloadData);
+    const lineItems = cart.map((product) => {
+      return {
+        price_data:{
+          currency:"inr",
+          product_data:{
+            name:product.productname,
+            images:[product.productthumbnail],
+          },
+          unit_amount:product.productprice * 100,
+        },
+        quantity:product.itemqty,
+      }
+    });
+
+    const userRow = await client.query(`SELECT * FROM users WHERE userid=$1`,[userid]);
+    const user = userRow.rows[0];
+
+    const session = await stripe.checkout.sessions.create({
+      customer_email:user.email,
+      submit_type:'pay',
+      billing_address_collection:'required',
+      shipping_address_collection:{
+        allowed_countries:['IN'],
+      },
+      payment_method_types:["card"],
+      line_items:lineItems,
+      mode:"payment",
+      success_url:`${process.env.FRONTEND_URL}`,
+      cancel_url:`${process.env.FRONTEND_URL}/cart`,
+    })      
+
+    res.status(200).json({
+      "success":true,
+      "url":session.url,
+    })
+
+} catch (error) {
+  console.log(error);
+  }
+}
+
+export { addToCart,getCartProducts ,deleteCartItem,incrementQty,decrementQty,stripeCheckout};

@@ -9,7 +9,7 @@ import { editAvatar, editPassword, editUsername, getLoggedInUser, loginUser, log
 import cookieParser from 'cookie-parser';
 import cors from 'cors'
 import { addMultipleProducts, addProduct, addProductCategory, addSubCategory, deleteProduct, deleteProductCategory, deleteSubCategory, editProduct, editProductCategory, editSubCategory, getAllProductCategories, getAllProducts, getProductCategoryById, getSubCategories, getSubCategoriesByCategoryName, getSubCategoryById, sortByAmount, uploadProductThumbnail } from './controllers/product.controller';
-import { addToCart, decrementQty, deleteCartItem, getCartProducts, incrementQty } from './controllers/cart.controller';
+import { addToCart, decrementQty, deleteCartItem, getCartProducts, incrementQty, stripeCheckout } from './controllers/cart.controller';
 
 type dbObj = {
     database:string | undefined;
@@ -102,6 +102,7 @@ app.get('/cart/getCartProducts',getCartProducts);
 app.delete('/cart/delete/:id',deleteCartItem);
 app.put('/cart/incrementQty',incrementQty);
 app.put('/cart/decrementQty',decrementQty);
+app.post('/cart/checkout',stripeCheckout);
 
 app.listen(port,()=>{
     console.log(`server running at http://localhost:${port}`);
